@@ -10,8 +10,13 @@ use Illuminate\Contracts\Validation\ValidatesWhenResolved;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
+use Illuminate\Support\Mapping\ObjectMapper;
 use Illuminate\Validation\ValidatesWhenResolvedTrait;
+use LogicException;
 
+/**
+ * @template TData of object
+ */
 class FormRequest extends Request implements ValidatesWhenResolved
 {
     use ValidatesWhenResolvedTrait;
@@ -243,6 +248,49 @@ class FormRequest extends Request implements ValidatesWhenResolved
     public function validated($key = null, $default = null)
     {
         return data_get($this->validator->validated(), $key, $default);
+    }
+
+    /**
+     * Map validated data to a specific class.
+     *
+     * @template T of object
+     *
+     * @param  class-string<T>  $class
+     * @return T
+     */
+    public function mapTo(string $class): object
+    {
+        return $this->container->make(ObjectMapper::class)->map($this->validated(), $class);
+    }
+
+    /**
+     * Map validated data to the default target class.
+     *
+     * @return TData
+     *
+     * @throws \LogicException If no default mapping target is defined.
+     */
+    public function mapped(): object
+    {
+        $class = $this->mapsTo();
+
+        if ($class === null) {
+            throw new LogicException(
+                'No default mapping target. Override mapsTo() or use mapTo($class).'
+            );
+        }
+
+        return $this->mapTo($class);
+    }
+
+    /**
+     * Get the class that validated data should be mapped to.
+     *
+     * @return class-string<TData>|null
+     */
+    public function mapsTo(): ?string
+    {
+        return null;
     }
 
     /**

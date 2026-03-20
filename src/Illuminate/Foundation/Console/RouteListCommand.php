@@ -5,6 +5,7 @@ namespace Illuminate\Foundation\Console;
 use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Routing\UrlGenerator;
+use Illuminate\Routing\MarkdownController;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Routing\ViewController;
@@ -146,7 +147,7 @@ class RouteListCommand extends Command
             'name' => $route->getName(),
             'action' => ltrim($route->getActionName(), '\\'),
             'middleware' => $this->getMiddleware($route),
-            'path' => $this->getClosurePath($route),
+            'path' => $this->getRoutePath($route),
             'vendor' => $this->isVendorRoute($route),
         ]);
     }
@@ -237,8 +238,12 @@ class RouteListCommand extends Command
      * @param  \Illuminate\Routing\Route  $route
      * @return string|null
      */
-    protected function getClosurePath(Route $route)
+    protected function getRoutePath(Route $route)
     {
+        if (($path = $route->getAction('markdown.path')) !== null) {
+            return $path;
+        }
+
         if (! $route->action['uses'] instanceof Closure) {
             return null;
         }
@@ -288,6 +293,7 @@ class RouteListCommand extends Command
     {
         return in_array($route->getControllerClass(), [
             '\Illuminate\Routing\RedirectController',
+            '\Illuminate\Routing\MarkdownController',
             '\Illuminate\Routing\ViewController',
         ], true);
     }
@@ -460,7 +466,7 @@ class RouteListCommand extends Command
     {
         ['action' => $action, 'name' => $name] = $route;
 
-        if ($action === 'Closure' || $action === ViewController::class) {
+        if ($action === 'Closure' || $action === MarkdownController::class || $action === ViewController::class) {
             $path = $route['path'] ?? null;
 
             if ($name && $path) {

@@ -64,6 +64,7 @@ use Illuminate\Foundation\Console\KeyGenerateCommand;
 use Illuminate\Foundation\Console\LangPublishCommand;
 use Illuminate\Foundation\Console\ListenerMakeCommand;
 use Illuminate\Foundation\Console\MailMakeCommand;
+use Illuminate\Foundation\Console\MarkdownListCommand;
 use Illuminate\Foundation\Console\ModelMakeCommand;
 use Illuminate\Foundation\Console\NotificationMakeCommand;
 use Illuminate\Foundation\Console\ObserverMakeCommand;
@@ -145,6 +146,7 @@ class ArtisanServiceProvider extends ServiceProvider implements DeferrableProvid
         'EventList' => EventListCommand::class,
         'InvokeSerializedClosure' => InvokeSerializedClosureCommand::class,
         'KeyGenerate' => KeyGenerateCommand::class,
+        'MarkdownList' => MarkdownListCommand::class,
         'Optimize' => OptimizeCommand::class,
         'OptimizeClear' => OptimizeClearCommand::class,
         'PackageDiscover' => PackageDiscoverCommand::class,
@@ -874,6 +876,18 @@ class ArtisanServiceProvider extends ServiceProvider implements DeferrableProvid
     {
         $this->app->singleton(RouteListCommand::class, function ($app) {
             return new RouteListCommand($app['router']);
+        });
+    }
+
+    /**
+     * Register the command.
+     *
+     * @return void
+     */
+    protected function registerMarkdownListCommand()
+    {
+        $this->app->singleton(MarkdownListCommand::class, function ($app) {
+            return new MarkdownListCommand($app['router']);
         });
     }
 

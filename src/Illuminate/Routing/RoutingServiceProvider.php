@@ -24,6 +24,7 @@ class RoutingServiceProvider extends ServiceProvider
     public function register()
     {
         $this->registerRouter();
+        $this->registerMarkdown();
         $this->registerUrlGenerator();
         $this->registerRedirector();
         $this->registerPsrRequest();
@@ -43,6 +44,16 @@ class RoutingServiceProvider extends ServiceProvider
         $this->app->singleton('router', function ($app) {
             return new Router($app['events'], $app);
         });
+    }
+
+    /**
+     * Register the markdown renderer.
+     *
+     * @return void
+     */
+    protected function registerMarkdown()
+    {
+        $this->app->singleton(Markdown::class);
     }
 
     /**

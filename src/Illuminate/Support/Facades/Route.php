@@ -14,6 +14,8 @@ namespace Illuminate\Support\Facades;
  * @method static \Illuminate\Routing\Route redirect(string $uri, string $destination, int $status = 302)
  * @method static \Illuminate\Routing\Route permanentRedirect(string $uri, string $destination)
  * @method static \Illuminate\Routing\Route view(string $uri, string $view, array $data = [], int|array $status = 200, array $headers = [])
+ * @method static \Illuminate\Routing\PendingMarkdownRoute markdown(string $uri, string $path, string $layout)
+ * @method static \Illuminate\Support\Collection markdownPages(string|null $path = null)
  * @method static \Illuminate\Routing\Route match(array|string $methods, string $uri, array|string|callable|null $action = null)
  * @method static void resources(array $resources, array $options = [])
  * @method static void softDeletableResources(array $resources, array $options = [])

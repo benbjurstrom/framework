@@ -6,12 +6,15 @@ use BackedEnum;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Uri;
+use Illuminate\Testing\Assert;
 use Illuminate\Testing\LoggedExceptionCollection;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
+use Throwable;
 
 trait MakesHttpRequests
 {
@@ -65,6 +68,72 @@ trait MakesHttpRequests
      * @var bool
      */
     protected $withCredentials = false;
+
+    /**
+     * Assert that all registered markdown routes render successfully.
+     *
+     * By default, middleware is disabled so the assertion focuses on rendering issues.
+     * If you need to exercise the routes through middleware, pass `true` for the
+     * `$withMiddleware` argument and prepare the request state as needed.
+     *
+     * @param  bool  $withMiddleware
+     * @return $this
+     */
+    protected function assertMarkdownRoutesRender($withMiddleware = false)
+    {
+        $routes = (new Collection($this->app['router']->getRoutes()))
+            ->filter(fn (Route $route) => ! is_null($route->getAction('markdown.layout')))
+            ->values();
+
+        Assert::assertNotEmpty($routes->all(), 'No markdown routes were registered.');
+
+        $exceptions = $this->app->bound(LoggedExceptionCollection::class)
+            ? $this->app->make(LoggedExceptionCollection::class)
+            : new LoggedExceptionCollection;
+
+        $middlewareDisabled = $this->app->bound('middleware.disable');
+
+        if ($withMiddleware && $middlewareDisabled) {
+            $this->withMiddleware();
+        } elseif (! $withMiddleware && ! $middlewareDisabled) {
+            $this->withoutMiddleware();
+        }
+
+        try {
+            $routes->each(function (Route $route) use ($exceptions) {
+                $exceptionCount = $exceptions->count();
+
+                try {
+                    $response = $this->call(
+                        'GET',
+                        $this->markdownRouteUri($route),
+                        [],
+                        [],
+                        [],
+                        $this->markdownRouteServerVariables($route),
+                    );
+                } catch (Throwable $e) {
+                    Assert::fail($this->markdownRouteFailureMessage($route, exception: $e));
+                }
+
+                if (! $response->isSuccessful()) {
+                    Assert::fail($this->markdownRouteFailureMessage(
+                        $route,
+                        $response,
+                        $exceptions->slice($exceptionCount)->last(),
+                    ));
+                }
+            });
+        } finally {
+            if ($withMiddleware && $middlewareDisabled) {
+                $this->withoutMiddleware();
+            } elseif (! $withMiddleware && ! $middlewareDisabled) {
+                $this->withMiddleware();
+            }
+        }
+
+        return $this;
+    }
 
     /**
      * Define additional headers to be sent with the request.
@@ -762,5 +831,58 @@ trait MakesHttpRequests
                     : new LoggedExceptionCollection
             );
         });
+    }
+
+    /**
+     * Get the request URI for the given markdown route.
+     *
+     * @param  \Illuminate\Routing\Route  $route
+     * @return string
+     */
+    protected function markdownRouteUri(Route $route)
+    {
+        return '/'.ltrim($route->uri(), '/');
+    }
+
+    /**
+     * Get the server variables for the given markdown route.
+     *
+     * @param  \Illuminate\Routing\Route  $route
+     * @return array
+     */
+    protected function markdownRouteServerVariables(Route $route)
+    {
+        return array_filter([
+            'HTTP_ACCEPT' => 'text/html',
+            'HTTP_HOST' => $route->domain(),
+            'HTTPS' => $route->httpsOnly() ? 'on' : null,
+        ]);
+    }
+
+    /**
+     * Format a failure message for a markdown route assertion.
+     *
+     * @param  \Illuminate\Routing\Route  $route
+     * @param  \Illuminate\Testing\TestResponse|null  $response
+     * @param  \Throwable|null  $exception
+     * @return string
+     */
+    protected function markdownRouteFailureMessage(Route $route, $response = null, $exception = null)
+    {
+        $message = sprintf(
+            'Markdown route [%s] from [%s] failed to render successfully.',
+            $route->uri(),
+            $route->getAction('markdown.path'),
+        );
+
+        if (! is_null($response)) {
+            $message .= sprintf(' Received status code [%d].', $response->getStatusCode());
+        }
+
+        if (! is_null($exception)) {
+            $message .= sprintf(' Encountered [%s]: %s', $exception::class, $exception->getMessage());
+        }
+
+        return $message;
     }
 }

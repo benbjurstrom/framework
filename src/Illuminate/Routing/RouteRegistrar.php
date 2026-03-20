@@ -18,6 +18,7 @@ use InvalidArgumentException;
  * @method \Illuminate\Routing\Route patch(string $uri, \Closure|array|string|null $action = null)
  * @method \Illuminate\Routing\Route post(string $uri, \Closure|array|string|null $action = null)
  * @method \Illuminate\Routing\Route put(string $uri, \Closure|array|string|null $action = null)
+ * @method \Illuminate\Routing\PendingMarkdownRoute markdown(string $uri, string $path, string $layout)
  * @method \Illuminate\Routing\RouteRegistrar as(string $value)
  * @method \Illuminate\Routing\RouteRegistrar can(\UnitEnum|string  $ability, array|string $models = [])
  * @method \Illuminate\Routing\RouteRegistrar controller(string $controller)
@@ -199,6 +200,19 @@ class RouteRegistrar
     public function apiSingleton($name, $controller, array $options = [])
     {
         return $this->router->apiSingleton($name, $controller, $this->attributes + $options);
+    }
+
+    /**
+     * Register markdown files under the given URI prefix.
+     *
+     * @param  string  $uri
+     * @param  string  $path
+     * @param  string  $layout
+     * @return \Illuminate\Routing\PendingMarkdownRoute
+     */
+    public function markdown($uri, $path, $layout)
+    {
+        return $this->router->markdown($uri, $path, $layout, $this->attributes);
     }
 
     /**

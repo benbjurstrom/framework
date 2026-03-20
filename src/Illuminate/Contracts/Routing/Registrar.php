@@ -69,6 +69,16 @@ interface Registrar
     public function match($methods, $uri, $action);
 
     /**
+     * Register markdown files under the given URI prefix.
+     *
+     * @param  string  $uri
+     * @param  string  $path
+     * @param  string  $layout
+     * @return \Illuminate\Routing\PendingMarkdownRoute
+     */
+    public function markdown($uri, $path, $layout);
+
+    /**
      * Route a resource to a controller.
      *
      * @param  string  $name

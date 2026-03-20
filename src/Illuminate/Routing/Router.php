@@ -296,6 +296,37 @@ class Router implements BindingRegistrar, RegistrarContract
     }
 
     /**
+     * Register markdown files under the given URI prefix.
+     *
+     * @param  string  $uri
+     * @param  string  $path
+     * @param  string  $layout
+     * @param  array  $attributes
+     * @return \Illuminate\Routing\PendingMarkdownRoute
+     */
+    public function markdown($uri, $path, $layout, array $attributes = [])
+    {
+        return new MarkdownRouteRegistrar($this)->register($uri, $path, $layout, $attributes);
+    }
+
+    /**
+     * Get the discovered markdown pages for the given mounted path.
+     *
+     * @param  string|null  $path
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Routing\MarkdownPage>
+     */
+    public function markdownPages($path = null)
+    {
+        $path = is_null($path) ? null : trim(str_replace('\\', '/', $path), '/');
+
+        return (new Collection($this->getRoutes()))
+            ->filter(fn (Route $route) => ! is_null($route->getAction('markdown.layout')))
+            ->filter(fn (Route $route) => is_null($path) || $route->getAction('markdown.mount') === $path)
+            ->map(fn (Route $route) => $this->newMarkdownPage($route))
+            ->values();
+    }
+
+    /**
      * Register a new route with the given verbs.
      *
      * @param  array|string  $methods
@@ -696,6 +727,29 @@ class Router implements BindingRegistrar, RegistrarContract
     protected function prefix($uri)
     {
         return trim(trim($this->getLastGroupPrefix(), '/').'/'.trim($uri, '/'), '/') ?: '/';
+    }
+
+    /**
+     * Create a new markdown page instance from the given route.
+     *
+     * @param  \Illuminate\Routing\Route  $route
+     * @return \Illuminate\Routing\MarkdownPage
+     */
+    protected function newMarkdownPage(Route $route)
+    {
+        $markdown = $route->getAction('markdown');
+        $path = $this->container->resourcePath('markdown'.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $markdown['path']));
+        $meta = is_file($path)
+            ? $this->container->make(Markdown::class)->frontMatter((string) file_get_contents($path))
+            : [];
+
+        return new MarkdownPage(
+            $markdown['uri'],
+            $markdown['path'],
+            $meta,
+            $route->getName(),
+            $this->container->make('url')->toRoute($route, [], false),
+        );
     }
 
     /**

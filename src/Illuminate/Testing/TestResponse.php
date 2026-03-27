@@ -300,6 +300,41 @@ class TestResponse implements ArrayAccess
     }
 
     /**
+     * Assert the route metadata for the response.
+     *
+     * @param  string|array  $key
+     * @param  mixed  $value
+     * @return $this
+     */
+    public function assertRouteMetadata($key, $value = null)
+    {
+        $route = $this->baseRequest?->route();
+
+        PHPUnit::withResponse($this)->assertNotNull(
+            $route,
+            'The response is not associated with a route.'
+        );
+
+        if (is_array($key)) {
+            PHPUnit::withResponse($this)->assertEquals(
+                $key,
+                $route->getMetadata(),
+                'Route metadata does not match the expected array.'
+            );
+
+            return $this;
+        }
+
+        PHPUnit::withResponse($this)->assertSame(
+            $value,
+            $route->getMetadata($key),
+            "Route metadata [{$key}] does not match the expected value."
+        );
+
+        return $this;
+    }
+
+    /**
      * Assert whether the response is redirecting to a given signed route.
      *
      * @param  \BackedEnum|string|null  $name

@@ -78,6 +78,7 @@ use Illuminate\Foundation\Console\ResourceMakeCommand;
 use Illuminate\Foundation\Console\RouteCacheCommand;
 use Illuminate\Foundation\Console\RouteClearCommand;
 use Illuminate\Foundation\Console\RouteListCommand;
+use Illuminate\Foundation\Console\RouteShowCommand;
 use Illuminate\Foundation\Console\RuleMakeCommand;
 use Illuminate\Foundation\Console\ScopeMakeCommand;
 use Illuminate\Foundation\Console\ServeCommand;
@@ -167,6 +168,7 @@ class ArtisanServiceProvider extends ServiceProvider implements DeferrableProvid
         'RouteCache' => RouteCacheCommand::class,
         'RouteClear' => RouteClearCommand::class,
         'RouteList' => RouteListCommand::class,
+        'RouteShow' => RouteShowCommand::class,
         'SchemaDump' => DumpCommand::class,
         'Seed' => SeedCommand::class,
         'ScheduleFinish' => ScheduleFinishCommand::class,
@@ -874,6 +876,18 @@ class ArtisanServiceProvider extends ServiceProvider implements DeferrableProvid
     {
         $this->app->singleton(RouteListCommand::class, function ($app) {
             return new RouteListCommand($app['router']);
+        });
+    }
+
+    /**
+     * Register the route show command.
+     *
+     * @return void
+     */
+    protected function registerRouteShowCommand()
+    {
+        $this->app->singleton(RouteShowCommand::class, function ($app) {
+            return new RouteShowCommand($app['router']);
         });
     }
 

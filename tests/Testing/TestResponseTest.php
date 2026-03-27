@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\UrlGenerator;
 use Illuminate\Session\ArraySessionHandler;
@@ -2753,6 +2754,35 @@ EOT
         $this->expectException(ExpectationFailedException::class);
 
         $response->assertRedirectContains('url.net');
+    }
+
+    public function testAssertRouteMetadata(): void
+    {
+        $route = (new Route('GET', '/posts', fn () => 'ok'))->metadata([
+            'title' => 'Posts',
+            'robots' => 'index,follow',
+        ]);
+
+        $request = Request::create('/posts', 'GET');
+        $request->setRouteResolver(fn () => $route);
+
+        $response = TestResponse::fromBaseResponse(new Response, $request);
+
+        $response->assertRouteMetadata('title', 'Posts');
+        $response->assertRouteMetadata([
+            'title' => 'Posts',
+            'robots' => 'index,follow',
+        ]);
+    }
+
+    public function testAssertRouteMetadataFailsWhenRouteIsMissing(): void
+    {
+        $response = TestResponse::fromBaseResponse(new Response, Request::create('/posts', 'GET'));
+
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('The response is not associated with a route.');
+
+        $response->assertRouteMetadata('title', 'Posts');
     }
 
     public function testAssertHeaderContainsSuccess(): void

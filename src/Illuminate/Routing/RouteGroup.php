@@ -27,11 +27,12 @@ class RouteGroup
         $new = array_merge(static::formatAs($new, $old), [
             'namespace' => static::formatNamespace($new, $old),
             'prefix' => static::formatPrefix($new, $old, $prependExistingPrefix),
+            'metadata' => static::formatMetadata($new, $old),
             'where' => static::formatWhere($new, $old),
         ]);
 
         return array_merge_recursive(Arr::except(
-            $old, ['namespace', 'prefix', 'where', 'as']
+            $old, ['namespace', 'prefix', 'metadata', 'where', 'as']
         ), $new);
     }
 
@@ -84,6 +85,21 @@ class RouteGroup
         return array_merge(
             $old['where'] ?? [],
             $new['where'] ?? []
+        );
+    }
+
+    /**
+     * Format the metadata for the new group attributes.
+     *
+     * @param  array  $new
+     * @param  array  $old
+     * @return array
+     */
+    protected static function formatMetadata($new, $old)
+    {
+        return array_merge(
+            $old['metadata'] ?? [],
+            $new['metadata'] ?? []
         );
     }
 

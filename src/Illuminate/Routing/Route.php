@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Attributes\Metadata as MetadataAttribute;
 use Illuminate\Routing\Attributes\Controllers\Middleware as MiddlewareAttribute;
 use Illuminate\Routing\Contracts\CallableDispatcher;
 use Illuminate\Routing\Contracts\ControllerDispatcher as ControllerDispatcherContract;
@@ -160,6 +161,13 @@ class Route
      * @var array
      */
     protected $bindingFields = [];
+
+    /**
+     * The runtime metadata for the current request.
+     *
+     * @var array
+     */
+    protected $runtimeMetadata = [];
 
     /**
      * The validators used by the routes.
@@ -381,6 +389,8 @@ class Route
     public function bind(Request $request)
     {
         $this->compileRoute();
+
+        $this->runtimeMetadata = [];
 
         $this->parameters = (new RouteParameterBinder($this))
             ->parameters($request);
@@ -998,6 +1008,64 @@ class Route
     }
 
     /**
+     * Merge metadata into the route's declared metadata.
+     *
+     * @param  array  $metadata
+     * @return $this
+     */
+    public function metadata(array $metadata)
+    {
+        $this->action['metadata'] = array_merge(
+            (array) ($this->action['metadata'] ?? []), $metadata
+        );
+
+        return $this;
+    }
+
+    /**
+     * Get the route's declared metadata, including application defaults.
+     *
+     * @param  string|null  $key
+     * @return mixed
+     */
+    public function getDeclaredMetadata($key = null)
+    {
+        $metadata = array_merge(
+            $this->router ? $this->router->getDefaultMetadata() : [],
+            (array) ($this->action['metadata'] ?? []),
+            $this->controllerMetadata(),
+        );
+
+        return is_null($key) ? $metadata : Arr::get($metadata, $key);
+    }
+
+    /**
+     * Get the route's resolved metadata.
+     *
+     * @param  string|null  $key
+     * @return mixed
+     */
+    public function getMetadata($key = null)
+    {
+        $metadata = array_merge($this->getDeclaredMetadata(), $this->runtimeMetadata);
+
+        return is_null($key) ? $metadata : Arr::get($metadata, $key);
+    }
+
+    /**
+     * Merge metadata into the route's runtime metadata.
+     *
+     * @param  array  $metadata
+     * @return $this
+     */
+    public function mergeMetadata(array $metadata)
+    {
+        $this->runtimeMetadata = array_merge($this->runtimeMetadata, $metadata);
+
+        return $this;
+    }
+
+    /**
      * Set the action array for the route.
      *
      * @param  array  $action
@@ -1018,6 +1086,66 @@ class Route
         }
 
         return $this;
+    }
+
+    /**
+     * Get the attribute provided controller metadata for the route.
+     *
+     * @return array
+     */
+    protected function controllerMetadata()
+    {
+        if (isset($this->action['controller_metadata'])) {
+            return (array) $this->action['controller_metadata'];
+        }
+
+        if (! $this->isControllerAction()) {
+            return [];
+        }
+
+        return $this->action['controller_metadata'] = $this->attributeProvidedControllerMetadata(
+            $this->getControllerClass(), $this->getControllerMethod()
+        );
+    }
+
+    /**
+     * Get the attribute provided controller metadata for the given class and method.
+     *
+     * @param  string  $class
+     * @param  string  $method
+     * @return array
+     */
+    protected function attributeProvidedControllerMetadata(string $class, string $method)
+    {
+        try {
+            $reflectionClass = new ReflectionClass($class);
+
+            $reflectionMethod = $reflectionClass->getMethod($method);
+        } catch (ReflectionException) {
+            return [];
+        }
+
+        return array_merge(
+            $this->resolveMetadataAttributes(
+                $reflectionClass->getAttributes(MetadataAttribute::class, ReflectionAttribute::IS_INSTANCEOF)
+            ),
+            $this->resolveMetadataAttributes(
+                $reflectionMethod->getAttributes(MetadataAttribute::class, ReflectionAttribute::IS_INSTANCEOF)
+            ),
+        );
+    }
+
+    /**
+     * Resolve the metadata attributes into a single metadata array.
+     *
+     * @param  array<int, \ReflectionAttribute>  $attributes
+     * @return array
+     */
+    protected function resolveMetadataAttributes(array $attributes)
+    {
+        return (new Collection($attributes))
+            ->map(fn (ReflectionAttribute $attribute) => $attribute->newInstance()->metadata)
+            ->reduce(fn ($metadata, $values) => array_merge($metadata, $values), []);
     }
 
     /**
@@ -1421,6 +1549,8 @@ class Route
      */
     public function prepareForSerialization()
     {
+        $this->action['controller_metadata'] = $this->controllerMetadata();
+
         if ($this->action['uses'] instanceof Closure) {
             $this->action['uses'] = serialize(
                 SerializableClosure::unsigned($this->action['uses'])

@@ -122,6 +122,13 @@ class Router implements BindingRegistrar, RegistrarContract
     protected $groupStack = [];
 
     /**
+     * The default metadata applied to all routes.
+     *
+     * @var array
+     */
+    protected $defaultMetadata = [];
+
+    /**
      * The registered custom implicit binding callback.
      *
      * @var array
@@ -741,6 +748,27 @@ class Router implements BindingRegistrar, RegistrarContract
     }
 
     /**
+     * Merge metadata into the router's default metadata.
+     *
+     * @param  array  $metadata
+     * @return void
+     */
+    public function defaultMetadata(array $metadata)
+    {
+        $this->defaultMetadata = array_merge($this->defaultMetadata, $metadata);
+    }
+
+    /**
+     * Get the router's default metadata.
+     *
+     * @return array
+     */
+    public function getDefaultMetadata()
+    {
+        return $this->defaultMetadata;
+    }
+
+    /**
      * Dispatch the request to the application.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -1324,6 +1352,21 @@ class Router implements BindingRegistrar, RegistrarContract
     public function currentRouteName()
     {
         return $this->current() ? $this->current()->getName() : null;
+    }
+
+    /**
+     * Get the current route's resolved metadata.
+     *
+     * @param  string|null  $key
+     * @return mixed
+     */
+    public function currentMetadata($key = null)
+    {
+        if (! $this->current()) {
+            return is_null($key) ? [] : null;
+        }
+
+        return $this->current()->getMetadata($key);
     }
 
     /**

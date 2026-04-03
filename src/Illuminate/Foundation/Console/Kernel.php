@@ -189,7 +189,7 @@ class Kernel implements KernelContract
         $this->commandStartedAt = Carbon::now();
 
         try {
-            if (in_array($input->getFirstArgument(), ['env:encrypt', 'env:decrypt'], true)) {
+            if (in_array($input->getFirstArgument(), ['env:encrypt', 'env:decrypt', 'env:secure'], true)) {
                 $this->bootstrapWithoutBootingProviders();
             }
 
@@ -438,7 +438,7 @@ class Kernel implements KernelContract
      */
     public function call($command, array $parameters = [], $outputBuffer = null)
     {
-        if (in_array($command, ['env:encrypt', 'env:decrypt'], true)) {
+        if (in_array($command, ['env:encrypt', 'env:decrypt', 'env:secure'], true)) {
             $this->bootstrapWithoutBootingProviders();
         }
 

@@ -4,6 +4,7 @@ namespace Illuminate\Foundation\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernelContract;
+use Illuminate\Foundation\Environment\SecureEnvironmentManager;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
 use LogicException;
@@ -55,6 +56,10 @@ class ConfigCacheCommand extends Command
      */
     public function handle()
     {
+        if ((new SecureEnvironmentManager($this->files))->fileContainsSecureValues($this->laravel->environmentFilePath())) {
+            throw new LogicException('Unable to cache configuration when the environment file contains secure values.');
+        }
+
         $this->callSilent('config:clear');
 
         $config = $this->getFreshConfiguration();

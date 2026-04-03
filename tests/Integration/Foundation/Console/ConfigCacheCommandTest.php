@@ -11,6 +11,10 @@ class ConfigCacheCommandTest extends TestCase
 {
     use InteractsWithPublishedFiles;
 
+    protected ?string $originalEnvironmentContents = null;
+
+    protected bool $environmentFileExisted = false;
+
     protected $files = [
         'bootstrap/cache/config.php',
         'config/testconfig.php',
@@ -22,10 +26,21 @@ class ConfigCacheCommandTest extends TestCase
 
         $this->afterApplicationCreated(function () use ($files) {
             $files->ensureDirectoryExists($this->app->configPath());
+
+            $this->environmentFileExisted = $files->exists($this->app->environmentFilePath());
+            $this->originalEnvironmentContents = $this->environmentFileExisted
+                ? $files->get($this->app->environmentFilePath())
+                : null;
         });
 
         $this->beforeApplicationDestroyed(function () use ($files) {
             $files->delete($this->app->configPath('testconfig.php'));
+
+            if ($this->environmentFileExisted) {
+                $files->put($this->app->environmentFilePath(), $this->originalEnvironmentContents);
+            } else {
+                $files->delete($this->app->environmentFilePath());
+            }
         });
 
         parent::setUp();
@@ -123,5 +138,20 @@ class ConfigCacheCommandTest extends TestCase
         }
 
         $this->assertFileDoesNotExist($this->app->getCachedConfigPath());
+    }
+
+    public function testConfigurationCacheFailsWhenEnvironmentContainsSecureValues()
+    {
+        $files = new Filesystem;
+        $files->put($this->app->environmentFilePath(), <<<'ENV'
+            APP_KEY=secure:test
+            APP_NAME=Laravel
+            ENV
+        );
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Unable to cache configuration when the environment file contains secure values.');
+
+        $this->artisan('config:cache');
     }
 }

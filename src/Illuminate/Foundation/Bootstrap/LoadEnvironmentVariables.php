@@ -5,6 +5,8 @@ namespace Illuminate\Foundation\Bootstrap;
 use Dotenv\Dotenv;
 use Dotenv\Exception\InvalidFileException;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Environment\SecureEnvironmentManager;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Env;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -26,7 +28,22 @@ class LoadEnvironmentVariables
         $this->checkForSpecificEnvironmentFile($app);
 
         try {
-            $this->createDotenv($app)->safeLoad();
+            if ($temporaryEnvironmentFile = $this->createSecureEnvironmentManager()->createTemporaryEnvironmentFile(
+                $app->basePath(),
+                $app->environmentFilePath(),
+            )) {
+                try {
+                    Dotenv::create(
+                        Env::getRepository(),
+                        dirname($temporaryEnvironmentFile),
+                        basename($temporaryEnvironmentFile),
+                    )->safeLoad();
+                } finally {
+                    @unlink($temporaryEnvironmentFile);
+                }
+            } else {
+                $this->createDotenv($app)->safeLoad();
+            }
         } catch (InvalidFileException $e) {
             $this->writeErrorAndDie($e);
         }
@@ -88,6 +105,16 @@ class LoadEnvironmentVariables
             $app->environmentPath(),
             $app->environmentFile()
         );
+    }
+
+    /**
+     * Create the secure environment manager.
+     *
+     * @return \Illuminate\Foundation\Environment\SecureEnvironmentManager
+     */
+    protected function createSecureEnvironmentManager()
+    {
+        return new SecureEnvironmentManager(new Filesystem);
     }
 
     /**
